@@ -442,10 +442,12 @@ export default function Login() {
 
           </form>
 
-          <p className="login-footer">
-            ¿Olvidaste tu contraseña? <a href="#">Recupérala aquí</a>
-          </p>
-
+          <button type="button" className="login-link" onClick={() => navigate("/recover")}>
+  Recuperala aqui
+</button>
+<button type="button" className="login-link" onClick={() => navigate("/register")}>
+  Crear cuenta nueva
+</button>
           <div className="badge-secure">
             <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
