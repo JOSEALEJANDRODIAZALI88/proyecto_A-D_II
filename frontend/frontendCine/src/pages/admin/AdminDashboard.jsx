@@ -18,6 +18,7 @@ const DUMMY_MOVIES = [
   { id: 6, title: "Celestia",        genre: "Fantasy",  status: "inactive", tickets: 154, date: "2025-05-25" },
 ];
 
+
 /* ── Icons ──────────────────────────────────────────────────── */
 function FilmIcon() {
   return (
@@ -88,7 +89,11 @@ export default function HomeAdmin() {
 
         <div className="navbar-spacer" />
 
-        <span className="navbar-role-badge">Administrador</span>
+        <button className="navbar-btn navbar-btn-ghost" onClick={() => navigate("/control-panel")}>
+            <span className="navbar-user">Entrar al panel</span>
+        </button>
+
+        <span className="navbar-role-badge"> Administrador </span>
 
         <button className="navbar-btn navbar-btn-ghost" onClick={handleLogout}>
           <LogoutIcon />

@@ -5,6 +5,8 @@ import Recover from "./pages/recover";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import Home from "./pages/user/Home";
 import ProtectedRoute from "./routes/protectedRoute";
+import PanelNav from "./pages/admin/control-panel";
+import { Usuarios, Funciones, Peliculas } from "./pages/admin/PanelPlaceholders";
 
 export default function App() {
   return (
@@ -25,6 +27,19 @@ export default function App() {
         />
 
         <Route
+          path="/control-panel"
+          element={
+            <ProtectedRoute allowedRole="admin">
+              <PanelNav />
+            </ProtectedRoute>
+          }
+        >
+          <Route path="usuarios" element={<Usuarios />} />
+          <Route path="funciones" element={<Funciones />} />
+          <Route path="peliculas" element={<Peliculas />} />
+        </Route>
+
+        <Route
           path="/home"
           element={
             <ProtectedRoute allowedRole="usuario">
@@ -32,6 +47,8 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+
+
       </Routes>
     </BrowserRouter>
   );
