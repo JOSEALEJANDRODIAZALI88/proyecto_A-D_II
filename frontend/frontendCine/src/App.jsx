@@ -7,6 +7,9 @@ import Home from "./pages/user/Home";
 import ProtectedRoute from "./routes/protectedRoute";
 import PanelNav from "./pages/admin/control-panel";
 import { Usuarios, Funciones, Peliculas } from "./pages/admin/PanelPlaceholders";
+import PeliculasList from "./pages/admin/PeliculasList";
+import AddPelicula from "./pages/admin/AddPelicula";
+import EditPelicula from "./pages/admin/EditPelicula";
 
 export default function App() {
   return (
@@ -35,8 +38,15 @@ export default function App() {
           }
         >
           <Route path="usuarios" element={<Usuarios />} />
+
+
           <Route path="funciones" element={<Funciones />} />
-          <Route path="peliculas" element={<Peliculas />} />
+
+
+          <Route path="peliculas" element={<PeliculasList />} />
+          <Route path="peliculas/nueva" element={<AddPelicula />} />
+          <Route path="peliculas/editar/:id" element={<EditPelicula />} />
+
         </Route>
 
         <Route
