@@ -10,6 +10,9 @@ import { Usuarios, Funciones, Peliculas } from "./pages/admin/PanelPlaceholders"
 import PeliculasList from "./pages/admin/PeliculasList";
 import AddPelicula from "./pages/admin/AddPelicula";
 import EditPelicula from "./pages/admin/EditPelicula";
+import UsuariosList from "./pages/admin/UsuariosList";
+import AddUsuario from "./pages/admin/AddUsuario";
+import EditUsuario from "./pages/admin/EditUsuario";
 
 export default function App() {
   return (
@@ -37,8 +40,9 @@ export default function App() {
             </ProtectedRoute>
           }
         >
-          <Route path="usuarios" element={<Usuarios />} />
-
+          <Route path="usuarios" element={<UsuariosList />} />
+          <Route path="usuarios/nuevo" element={<AddUsuario />} />
+          <Route path="usuarios/editar/:id" element={<EditUsuario />} />
 
           <Route path="funciones" element={<Funciones />} />
 
@@ -46,6 +50,7 @@ export default function App() {
           <Route path="peliculas" element={<PeliculasList />} />
           <Route path="peliculas/nueva" element={<AddPelicula />} />
           <Route path="peliculas/editar/:id" element={<EditPelicula />} />
+          
 
         </Route>
 
