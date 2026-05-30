@@ -34,6 +34,11 @@ export default function Register() {
       return;
     }
 
+    if (!/^[0-9]{6,15}$/.test(telefonoValue)) {
+      setError("Ingrese un telefono valido");
+      return;
+    }
+
     if (password.length < 6) {
       setError("La contrasena debe tener al menos 6 caracteres");
       return;
@@ -49,6 +54,13 @@ export default function Register() {
     try {
       await registerUser(nombreValue, correoValue, telefonoValue, password);
       setSuccess("Usuario registrado correctamente");
+
+      setNombre("");
+      setCorreo("");
+      setTelefono("");
+      setPassword("");
+      setConfirmPassword("");
+
       setTimeout(() => navigate("/login"), 1200);
     } catch (error) {
       const message = error.response?.data?.message || "No se pudo registrar el usuario";
@@ -59,64 +71,104 @@ export default function Register() {
   };
 
   return (
-    <div className="auth-page">
-      <form className="auth-card" onSubmit={handleRegister}>
-        <div className="auth-icon">+</div>
-
-        <h1>Crear cuenta</h1>
-        <p>Registra tus datos para comprar tickets</p>
+    <main className="auth-page">
+      <form className="auth-card auth-card-register" onSubmit={handleRegister} autoComplete="off">
+        <div className="auth-header">
+          <div className="auth-icon">+</div>
+          <span className="auth-brand">Cine Verde</span>
+          <h1>Crear cuenta</h1>
+          <p>Registra tus datos para comprar tickets de cine online</p>
+        </div>
 
         {error && <div className="auth-error">{error}</div>}
         {success && <div className="auth-success">{success}</div>}
 
-        <label>Nombre completo</label>
-        <input
-          type="text"
-          value={nombre}
-          onChange={(e) => setNombre(e.target.value)}
-          placeholder="Ej. Juan Perez"
-        />
+        <div className="auth-grid">
+          <div className="auth-field">
+            <label htmlFor="nombre">Nombre completo</label>
+            <input
+              id="nombre"
+              name="nombre_cliente"
+              type="text"
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              placeholder="Ej. Juan Perez"
+              autoComplete="name"
+            />
+          </div>
 
-        <label>Correo electronico</label>
-        <input
-          type="email"
-          value={correo}
-          onChange={(e) => setCorreo(e.target.value)}
-          placeholder="correo@gmail.com"
-        />
+          <div className="auth-field">
+            <label htmlFor="telefono">Telefono</label>
+            <input
+              id="telefono"
+              name="telefono_cliente"
+              type="tel"
+              value={telefono}
+              onChange={(e) => setTelefono(e.target.value.replace(/\D/g, ""))}
+              placeholder="77777777"
+              autoComplete="tel"
+              inputMode="numeric"
+              maxLength="15"
+            />
+          </div>
+        </div>
 
-        <label>Telefono</label>
-        <input
-          type="text"
-          value={telefono}
-          onChange={(e) => setTelefono(e.target.value)}
-          placeholder="77777777"
-        />
+        <div className="auth-field">
+          <label htmlFor="correo">Correo electronico</label>
+          <input
+            id="correo"
+            name="correo_cliente"
+            type="email"
+            value={correo}
+            onChange={(e) => setCorreo(e.target.value)}
+            placeholder="correo@gmail.com"
+            autoComplete="email"
+          />
+        </div>
 
-        <label>Contrasena</label>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Minimo 6 caracteres"
-        />
+        <div className="auth-grid">
+          <div className="auth-field">
+            <label htmlFor="password">Contrasena</label>
+            <input
+              id="password"
+              name="password_nueva_cliente"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Minimo 6 caracteres"
+              autoComplete="new-password"
+            />
+          </div>
 
-        <label>Confirmar contrasena</label>
-        <input
-          type="password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          placeholder="Repita su contrasena"
-        />
+          <div className="auth-field">
+            <label htmlFor="confirmPassword">Confirmar contrasena</label>
+            <input
+              id="confirmPassword"
+              name="confirmar_password_nueva_cliente"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Repita su contrasena"
+              autoComplete="new-password"
+            />
+          </div>
+        </div>
 
-        <button type="submit" disabled={loading}>
+        <button type="submit" className="auth-submit" disabled={loading}>
           {loading ? "Registrando..." : "Registrarse"}
         </button>
 
-        <button type="button" className="auth-link-button" onClick={() => navigate("/login")}>
-          Ya tengo cuenta
-        </button>
+        <div className="auth-footer">
+          <span>Ya tienes cuenta?</span>
+          <button type="button" onClick={() => navigate("/login")}>
+            Iniciar sesion
+          </button>
+        </div>
+
+        <div className="auth-secure">
+          Conexion cifrada y segura
+        </div>
       </form>
-    </div>
+    </main>
   );
 }
