@@ -50,7 +50,7 @@ function TrashIcon() {
   );
 }
 
-export default function AdminDashboard() {
+export default function HomeAdmin() {
   const navigate = useNavigate();
 
   const [stats, setStats] = useState([
@@ -196,17 +196,15 @@ export default function AdminDashboard() {
         </div>
 
         {error && (
-          <div
-            style={{
-              background: "#fff0f0",
-              border: "1px solid #ffc7c7",
-              color: "#c62828",
-              padding: "14px 18px",
-              borderRadius: 14,
-              marginBottom: 22,
-              fontWeight: 700,
-            }}
-          >
+          <div style={{
+            background: "#fff0f0",
+            border: "1px solid #ffc7c7",
+            color: "#c62828",
+            padding: "14px 18px",
+            borderRadius: 14,
+            marginBottom: 22,
+            fontWeight: 700,
+          }}>
             {error}
           </div>
         )}
@@ -230,7 +228,6 @@ export default function AdminDashboard() {
         <div className="table-wrap">
           <div className="table-header">
             <span className="table-header-title">Catalogo actual</span>
-
             <button
               className="btn btn-primary btn-sm"
               onClick={() => navigate("/control-panel/peliculas/nuevo")}
@@ -268,27 +265,23 @@ export default function AdminDashboard() {
                     <td style={{ color: "var(--ink-muted)", fontWeight: 500 }}>
                       {index + 1}
                     </td>
-
                     <td style={{ fontWeight: 600 }}>
                       {movie.titulo}
                     </td>
-
-                    <td>{movie.genero || "-"}</td>
-
+                    <td>
+                      {movie.genero || "-"}
+                    </td>
                     <td>
                       <span className={`pill ${movie.estado ? "pill-green" : "pill-gray"}`}>
                         {getEstadoTexto(movie.estado)}
                       </span>
                     </td>
-
                     <td style={{ fontWeight: 500 }}>
                       {formatNumber(movie.tickets_vendidos)}
                     </td>
-
                     <td style={{ color: "var(--ink-muted)" }}>
                       {getFecha(movie.fecha_estreno)}
                     </td>
-
                     <td>
                       <div style={{ display: "flex", gap: 6 }}>
                         <button

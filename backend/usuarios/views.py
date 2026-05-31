@@ -9,13 +9,13 @@ from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
-from google.oauth2 import id_token
-from google.auth.transport import requests as google_requests
 from .models import Administrador, Cliente, PasswordRecoveryCode
 from .serializers import (
     LoginSerializer,
     RegisterSerializer,
+    UsuarioSaveSerializer,
     GoogleAuthSerializer,
     SendPasswordRecoveryCodeSerializer,
     VerifyPasswordRecoveryCodeSerializer,
@@ -42,7 +42,47 @@ def get_user_role(user):
     if user.is_superuser or Administrador.objects.filter(usuario=user, estado=True).exists():
         return "admin"
 
+    if Cliente.objects.filter(usuario=user).exists():
+        return "cliente"
+
     return "usuario"
+
+
+def get_user_data(user):
+    cliente = Cliente.objects.filter(usuario=user).first()
+    administrador = Administrador.objects.filter(usuario=user).first()
+    rol = get_user_role(user)
+
+    telefono = ""
+    direccion = ""
+    cargo = ""
+    estado = user.is_active
+
+    if cliente:
+        telefono = cliente.telefono or ""
+        direccion = cliente.direccion or ""
+        estado = user.is_active and cliente.estado
+
+    if administrador:
+        cargo = administrador.cargo or "Administrador"
+        estado = user.is_active and administrador.estado
+
+    if user.is_superuser:
+        cargo = "Administrador General"
+        estado = user.is_active
+
+    return {
+        "id": user.id,
+        "username": user.username,
+        "nombre": user.first_name or user.username,
+        "correo": user.email,
+        "rol": rol,
+        "telefono": telefono,
+        "direccion": direccion,
+        "cargo": cargo,
+        "estado": estado,
+        "is_superuser": user.is_superuser
+    }
 
 
 def build_auth_response(user):
@@ -87,6 +127,215 @@ def validate_recovery_code(correo, codigo):
         return None, "Codigo incorrecto"
 
     return recovery, ""
+
+
+class UsuarioListCreateView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        users = User.objects.all().order_by("id")
+        data = [get_user_data(user) for user in users]
+
+        return Response(data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        serializer = UsuarioSaveSerializer(data=request.data)
+
+        if not serializer.is_valid():
+            return Response(
+                {"message": "Datos invalidos", "errors": serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        nombre = serializer.validated_data["nombre"].strip()
+        correo = serializer.validated_data["correo"].strip().lower()
+        telefono = serializer.validated_data.get("telefono", "").strip()
+        direccion = serializer.validated_data.get("direccion", "").strip()
+        password = serializer.validated_data.get("password", "")
+        rol = serializer.validated_data.get("rol", "cliente")
+        estado_user = serializer.validated_data.get("estado", True)
+
+        if not password:
+            return Response(
+                {"message": "La contrasena es obligatoria"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        username = get_unique_username(correo)
+
+        user = User.objects.create_user(
+            username=username,
+            email=correo,
+            password=password,
+            first_name=nombre
+        )
+
+        user.is_active = estado_user
+        user.save()
+
+        if rol == "admin":
+            Administrador.objects.create(
+                usuario=user,
+                cargo="Administrador",
+                estado=estado_user
+            )
+        else:
+            Cliente.objects.create(
+                usuario=user,
+                telefono=telefono,
+                direccion=direccion,
+                estado=estado_user
+            )
+
+        return Response(
+            {
+                "message": "Usuario creado correctamente",
+                "usuario": get_user_data(user)
+            },
+            status=status.HTTP_201_CREATED
+        )
+
+
+class UsuarioDetailView(APIView):
+    permission_classes = [AllowAny]
+
+    def get_user(self, user_id):
+        return User.objects.filter(id=user_id).first()
+
+    def get(self, request, user_id):
+        user = self.get_user(user_id)
+
+        if user is None:
+            return Response(
+                {"message": "Usuario no encontrado"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        return Response(get_user_data(user), status=status.HTTP_200_OK)
+
+    def put(self, request, user_id):
+        user = self.get_user(user_id)
+
+        if user is None:
+            return Response(
+                {"message": "Usuario no encontrado"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = UsuarioSaveSerializer(
+            data=request.data,
+            context={"user_id": user.id},
+            partial=True
+        )
+
+        if not serializer.is_valid():
+            return Response(
+                {"message": "Datos invalidos", "errors": serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        nombre = serializer.validated_data.get("nombre")
+        correo = serializer.validated_data.get("correo")
+        telefono = serializer.validated_data.get("telefono")
+        direccion = serializer.validated_data.get("direccion")
+        password = serializer.validated_data.get("password")
+        rol = serializer.validated_data.get("rol")
+        estado_user = serializer.validated_data.get("estado", user.is_active)
+
+        if nombre is not None:
+            user.first_name = nombre.strip()
+
+        if correo is not None:
+            user.email = correo.strip().lower()
+
+        if password:
+            user.set_password(password)
+
+        user.is_active = estado_user
+        user.save()
+
+        if rol == "admin":
+            Cliente.objects.filter(usuario=user).delete()
+
+            administrador, created = Administrador.objects.get_or_create(
+                usuario=user,
+                defaults={
+                    "cargo": "Administrador",
+                    "estado": estado_user
+                }
+            )
+
+            administrador.estado = estado_user
+            administrador.save()
+
+        if rol == "cliente" and not user.is_superuser:
+            Administrador.objects.filter(usuario=user).delete()
+
+            cliente, created = Cliente.objects.get_or_create(
+                usuario=user,
+                defaults={
+                    "telefono": telefono or "",
+                    "direccion": direccion or "",
+                    "estado": estado_user
+                }
+            )
+
+            if telefono is not None:
+                cliente.telefono = telefono.strip()
+
+            if direccion is not None:
+                cliente.direccion = direccion.strip()
+
+            cliente.estado = estado_user
+            cliente.save()
+
+        cliente = Cliente.objects.filter(usuario=user).first()
+
+        if cliente and rol != "admin":
+            if telefono is not None:
+                cliente.telefono = telefono.strip()
+
+            if direccion is not None:
+                cliente.direccion = direccion.strip()
+
+            cliente.estado = estado_user
+            cliente.save()
+
+        administrador = Administrador.objects.filter(usuario=user).first()
+
+        if administrador and rol != "cliente":
+            administrador.estado = estado_user
+            administrador.save()
+
+        return Response(
+            {
+                "message": "Usuario actualizado correctamente",
+                "usuario": get_user_data(user)
+            },
+            status=status.HTTP_200_OK
+        )
+
+    def delete(self, request, user_id):
+        user = self.get_user(user_id)
+
+        if user is None:
+            return Response(
+                {"message": "Usuario no encontrado"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if user.is_superuser:
+            return Response(
+                {"message": "No se puede eliminar el administrador principal"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user.delete()
+
+        return Response(
+            {"message": "Usuario eliminado correctamente"},
+            status=status.HTTP_200_OK
+        )
 
 
 class LoginView(APIView):
@@ -190,6 +439,15 @@ class GoogleAuthView(APIView):
         if not GOOGLE_CLIENT_ID or GOOGLE_CLIENT_ID == "PEGA_AQUI_TU_CLIENT_ID_DE_GOOGLE":
             return Response(
                 {"message": "Falta configurar GOOGLE_CLIENT_ID en el backend"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        try:
+            from google.oauth2 import id_token
+            from google.auth.transport import requests as google_requests
+        except ImportError:
+            return Response(
+                {"message": "Falta instalar google-auth y requests"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 

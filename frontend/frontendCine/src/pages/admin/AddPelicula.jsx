@@ -1,163 +1,139 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { createPelicula } from "../../services/peliculaService";
-import "../../styles/panel.css";
-
-const GENEROS = [
-  "Accion",
-  "Aventura",
-  "Comedia",
-  "Drama",
-  "Romance",
-  "Terror",
-  "Suspenso",
-  "Thriller",
-  "Ciencia Ficcion",
-  "Fantasia",
-  "Animacion",
-  "Documental",
-];
-
-const CLASIFICACIONES = [
-  "ATP",
-  "PG",
-  "PG-13",
-  "R",
-  "NC-17",
-  "+12",
-  "+15",
-  "+18",
-];
-
-const IDIOMAS = [
-  "Espanol",
-  "Ingles",
-  "Portugues",
-  "Frances",
-  "Japones",
-  "Coreano",
-  "Subtitulado",
-  "Doblado",
-];
-
-const FORMATOS = [
-  "2D",
-  "3D",
-  "IMAX",
-  "4DX",
-  "VIP",
-];
-
-const INITIAL_FORM = {
-  titulo: "",
-  genero: "",
-  duracion: "",
-  clasificacion: "",
-  sinopsis: "",
-  idioma: "",
-  formato: "",
-  fecha_estreno: "",
-  estado: true,
-  poster: null,
-};
+import { createPelicula } from "../../services/peliculaService.js";
 
 export default function AddPelicula() {
   const navigate = useNavigate();
 
-  const [form, setForm] = useState(INITIAL_FORM);
-  const [posterPreview, setPosterPreview] = useState("");
+  const [form, setForm] = useState({
+    titulo: "",
+    genero: "",
+    sinopsis: "",
+    duracion: "",
+    clasificacion: "Mayores de 13",
+    idioma: "Doblada",
+    formato: "2D",
+    fecha_estreno: "",
+    estado: true,
+    poster: null,
+  });
+
+  const [preview, setPreview] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const handleChange = (e) => {
-    const { name, value, type, checked, files } = e.target;
+  const handleChange = (event) => {
+    const { name, value, type, checked, files } = event.target;
 
     if (type === "file") {
-      const file = files && files.length > 0 ? files[0] : null;
+      const file = files[0];
 
-      setForm((prev) => ({
-        ...prev,
-        poster: file,
+      setForm((currentForm) => ({
+        ...currentForm,
+        poster: file || null,
       }));
 
-      setPosterPreview(file ? URL.createObjectURL(file) : "");
+      if (file) {
+        setPreview(URL.createObjectURL(file));
+      } else {
+        setPreview("");
+      }
+
+      setError("");
       return;
     }
 
-    setForm((prev) => ({
-      ...prev,
+    setForm((currentForm) => ({
+      ...currentForm,
       [name]: type === "checkbox" ? checked : value,
     }));
+
+    setError("");
   };
 
-  const validar = () => {
+  const validateForm = () => {
     if (!form.titulo.trim()) {
       return "El titulo es obligatorio";
     }
 
     if (!form.genero.trim()) {
-      return "Seleccione un genero";
+      return "El genero es obligatorio";
+    }
+
+    if (!form.sinopsis.trim()) {
+      return "La sinopsis es obligatoria";
     }
 
     if (!form.duracion || Number(form.duracion) <= 0) {
       return "La duracion debe ser mayor a 0";
     }
 
-    if (!form.clasificacion.trim()) {
-      return "Seleccione una clasificacion";
-    }
-
-    if (!form.idioma.trim()) {
-      return "Seleccione un idioma";
-    }
-
-    if (!form.formato.trim()) {
-      return "Seleccione un formato";
-    }
-
     if (!form.fecha_estreno) {
       return "La fecha de estreno es obligatoria";
-    }
-
-    if (!form.poster) {
-      return "El poster es obligatorio";
     }
 
     return "";
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
+  const getErrorMessage = (errorResponse) => {
+    const data = errorResponse.response?.data;
 
-    const validationError = validar();
+    if (data?.message) {
+      return data.message;
+    }
+
+    if (data?.detail) {
+      return data.detail;
+    }
+
+    if (data?.errors) {
+      const firstKey = Object.keys(data.errors)[0];
+      const firstError = data.errors[firstKey];
+
+      if (Array.isArray(firstError)) {
+        return firstError[0];
+      }
+
+      return String(firstError);
+    }
+
+    return "No se pudo guardar la pelicula";
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    const validationError = validateForm();
 
     if (validationError) {
       setError(validationError);
       return;
     }
 
-    setSaving(true);
-
     try {
+      setSaving(true);
+      setError("");
+
       await createPelicula({
-        ...form,
-        duracion: Number(form.duracion),
+        titulo: form.titulo.trim(),
+        genero: form.genero.trim(),
+        sinopsis: form.sinopsis.trim(),
+        duracion: form.duracion,
+        clasificacion: form.clasificacion,
+        idioma: form.idioma,
+        formato: form.formato,
+        fecha_estreno: form.fecha_estreno,
+        estado: form.estado,
+        poster: form.poster,
       });
 
       navigate("/control-panel/peliculas", {
         state: {
-          message: `La pelicula "${form.titulo}" se guardo correctamente`,
+          message: `La pelicula ${form.titulo} se creo correctamente`,
         },
       });
-    } catch (error) {
-      const backendError = error.response?.data;
-
-      if (backendError) {
-        setError(JSON.stringify(backendError));
-      } else {
-        setError("No se pudo guardar la pelicula");
-      }
+    } catch (errorResponse) {
+      setError(getErrorMessage(errorResponse));
     } finally {
       setSaving(false);
     }
@@ -165,298 +141,358 @@ export default function AddPelicula() {
 
   return (
     <>
-      <div style={{ marginBottom: 28 }}>
-        <h1 className="panel-page-title">Anadir pelicula</h1>
-        <p className="panel-page-subtitle">
-          Registra una nueva pelicula con sus datos completos.
-        </p>
-      </div>
+      <style>{`
+        .pelicula-form-page {
+          min-height: calc(100vh - 90px);
+          background: #f3fbf6;
+          padding: 44px 24px;
+          font-family: "Segoe UI", Arial, sans-serif;
+        }
 
-      <div className="panel-card" style={{ padding: 28 }}>
-        {error && (
-          <div style={errorStyle}>
-            {error}
-          </div>
-        )}
+        .pelicula-form-card {
+          max-width: 900px;
+          margin: 0 auto;
+          background: #ffffff;
+          border: 1px solid #dcefe4;
+          border-radius: 24px;
+          padding: 34px;
+          box-shadow: 0 18px 48px rgba(0, 100, 38, 0.1);
+        }
 
-        <form onSubmit={handleSubmit} style={{ display: "grid", gap: 18 }}>
-          <div style={mainGridStyle}>
-            <div>
-              <label style={labelStyle}>Poster</label>
+        .pelicula-form-title {
+          margin: 0;
+          font-size: 34px;
+          color: #102319;
+          font-weight: 500;
+          letter-spacing: 1px;
+        }
 
-              <label style={posterBoxStyle}>
-                {posterPreview ? (
-                  <img
-                    src={posterPreview}
-                    alt="Poster"
-                    style={posterImageStyle}
-                  />
-                ) : (
-                  <span style={posterTextStyle}>
-                    Seleccionar poster
-                  </span>
-                )}
+        .pelicula-form-subtitle {
+          color: #6c8f76;
+          margin: 10px 0 28px;
+          font-weight: 500;
+        }
 
+        .pelicula-alert {
+          margin-bottom: 18px;
+          padding: 13px 16px;
+          border-radius: 14px;
+          background: #fff0f0;
+          border: 1px solid #ffc7c7;
+          color: #c62828;
+          font-weight: 700;
+          text-align: center;
+        }
+
+        .pelicula-form-grid {
+          display: grid;
+          grid-template-columns: 180px 1fr 1fr;
+          gap: 18px;
+          align-items: start;
+        }
+
+        .pelicula-poster-box {
+          grid-row: span 5;
+        }
+
+        .pelicula-poster-preview {
+          width: 100%;
+          height: 250px;
+          border: 1.5px dashed #bfe8ca;
+          border-radius: 18px;
+          background: #f1f8f4;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+          color: #6c8f76;
+          font-weight: 800;
+          text-align: center;
+          margin-bottom: 12px;
+        }
+
+        .pelicula-poster-preview img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .pelicula-field-full {
+          grid-column: 2 / -1;
+        }
+
+        .pelicula-label {
+          display: block;
+          margin-bottom: 8px;
+          color: #365940;
+          font-size: 12px;
+          font-weight: 800;
+          letter-spacing: 2px;
+          text-transform: uppercase;
+        }
+
+        .pelicula-input,
+        .pelicula-select,
+        .pelicula-textarea {
+          width: 100%;
+          border: 1.5px solid #d4e8d9;
+          border-radius: 15px;
+          background: #f1f8f4;
+          padding: 0 16px;
+          color: #102319;
+          font-size: 15px;
+          font-weight: 600;
+          outline: none;
+          font-family: "Segoe UI", Arial, sans-serif;
+        }
+
+        .pelicula-input,
+        .pelicula-select {
+          height: 54px;
+        }
+
+        .pelicula-textarea {
+          min-height: 132px;
+          padding-top: 15px;
+          resize: vertical;
+        }
+
+        .pelicula-input:focus,
+        .pelicula-select:focus,
+        .pelicula-textarea:focus {
+          border-color: #009c29;
+          background: #ffffff;
+          box-shadow: 0 0 0 4px rgba(0, 156, 41, 0.12);
+        }
+
+        .pelicula-file {
+          width: 100%;
+          color: #365940;
+          font-weight: 700;
+        }
+
+        .pelicula-check {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          color: #365940;
+          font-weight: 700;
+          height: 54px;
+        }
+
+        .pelicula-form-actions {
+          display: flex;
+          gap: 12px;
+          margin-top: 30px;
+        }
+
+        .pelicula-submit,
+        .pelicula-cancel {
+          height: 54px;
+          border-radius: 15px;
+          padding: 0 24px;
+          font-size: 15px;
+          font-weight: 800;
+          cursor: pointer;
+        }
+
+        .pelicula-submit {
+          border: none;
+          background: #009c29;
+          color: #ffffff;
+          box-shadow: 0 14px 28px rgba(0, 156, 41, 0.22);
+        }
+
+        .pelicula-submit:hover {
+          background: #008425;
+        }
+
+        .pelicula-submit:disabled {
+          opacity: 0.65;
+          cursor: not-allowed;
+        }
+
+        .pelicula-cancel {
+          border: 1px solid #bfe8ca;
+          background: #ffffff;
+          color: #009c29;
+        }
+
+        .pelicula-cancel:hover {
+          background: #effaf2;
+        }
+
+        @media (max-width: 860px) {
+          .pelicula-form-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .pelicula-poster-box {
+            grid-row: auto;
+          }
+
+          .pelicula-field-full {
+            grid-column: auto;
+          }
+
+          .pelicula-form-actions {
+            flex-direction: column;
+          }
+        }
+      `}</style>
+
+      <section className="pelicula-form-page">
+        <div className="pelicula-form-card">
+          <h1 className="pelicula-form-title">Anadir pelicula</h1>
+          <p className="pelicula-form-subtitle">
+            Registra una nueva pelicula en la cartelera del sistema.
+          </p>
+
+          {error && <div className="pelicula-alert">{error}</div>}
+
+          <form onSubmit={handleSubmit}>
+            <div className="pelicula-form-grid">
+              <div className="pelicula-poster-box">
+                <label className="pelicula-label">Poster</label>
+                <div className="pelicula-poster-preview">
+                  {preview ? <img src={preview} alt="Poster" /> : <span>Sin poster</span>}
+                </div>
                 <input
+                  className="pelicula-file"
                   type="file"
                   name="poster"
                   accept="image/*"
                   onChange={handleChange}
-                  style={{ display: "none" }}
                 />
-              </label>
-            </div>
+              </div>
 
-            <div style={{ display: "grid", gap: 18 }}>
-              <div style={twoColumnStyle}>
-                <FormField
-                  label="Titulo"
+              <div className="pelicula-field-full">
+                <label className="pelicula-label">Titulo</label>
+                <input
+                  className="pelicula-input"
                   name="titulo"
                   value={form.titulo}
                   onChange={handleChange}
-                  placeholder="Ej. Phantom Circuit"
+                  placeholder="Ej. Avatar"
                 />
+              </div>
 
-                <FormSelect
-                  label="Genero"
+              <div>
+                <label className="pelicula-label">Genero</label>
+                <input
+                  className="pelicula-input"
                   name="genero"
                   value={form.genero}
                   onChange={handleChange}
-                  options={GENEROS}
+                  placeholder="Ej. Accion"
                 />
               </div>
 
-              <div style={twoColumnStyle}>
-                <FormField
-                  label="Duracion"
+              <div>
+                <label className="pelicula-label">Duracion</label>
+                <input
+                  className="pelicula-input"
                   name="duracion"
                   type="number"
+                  min="1"
                   value={form.duracion}
                   onChange={handleChange}
-                  placeholder="Ej. 120"
+                  placeholder="120"
                 />
+              </div>
 
-                <FormSelect
-                  label="Clasificacion"
+              <div>
+                <label className="pelicula-label">Clasificacion</label>
+                <select
+                  className="pelicula-select"
                   name="clasificacion"
                   value={form.clasificacion}
                   onChange={handleChange}
-                  options={CLASIFICACIONES}
-                />
+                >
+                  <option value="Todo publico">Todo publico</option>
+                  <option value="Mayores de 13">Mayores de 13</option>
+                  <option value="Mayores de 16">Mayores de 16</option>
+                  <option value="Mayores de 18">Mayores de 18</option>
+                </select>
               </div>
 
-              <div style={twoColumnStyle}>
-                <FormSelect
-                  label="Idioma"
+              <div>
+                <label className="pelicula-label">Idioma</label>
+                <select
+                  className="pelicula-select"
                   name="idioma"
                   value={form.idioma}
                   onChange={handleChange}
-                  options={IDIOMAS}
-                />
+                >
+                  <option value="Doblada">Doblada</option>
+                  <option value="Subtitulada">Subtitulada</option>
+                  <option value="Original">Original</option>
+                </select>
+              </div>
 
-                <FormSelect
-                  label="Formato"
+              <div>
+                <label className="pelicula-label">Formato</label>
+                <select
+                  className="pelicula-select"
                   name="formato"
                   value={form.formato}
                   onChange={handleChange}
-                  options={FORMATOS}
-                />
+                >
+                  <option value="2D">2D</option>
+                  <option value="3D">3D</option>
+                  <option value="IMAX">IMAX</option>
+                </select>
               </div>
 
-              <div style={twoColumnStyle}>
-                <FormField
-                  label="Fecha estreno"
+              <div>
+                <label className="pelicula-label">Fecha estreno</label>
+                <input
+                  className="pelicula-input"
                   name="fecha_estreno"
                   type="date"
                   value={form.fecha_estreno}
                   onChange={handleChange}
                 />
+              </div>
 
-                <FormSelectEstado
-                  label="Estado"
+              <label className="pelicula-check">
+                <input
+                  type="checkbox"
                   name="estado"
-                  value={form.estado}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      estado: e.target.value === "true",
-                    }))
-                  }
+                  checked={form.estado}
+                  onChange={handleChange}
+                />
+                Pelicula activa
+              </label>
+
+              <div className="pelicula-field-full">
+                <label className="pelicula-label">Sinopsis</label>
+                <textarea
+                  className="pelicula-textarea"
+                  name="sinopsis"
+                  value={form.sinopsis}
+                  onChange={handleChange}
+                  placeholder="Escribe una breve sinopsis de la pelicula"
                 />
               </div>
             </div>
-          </div>
 
-          <div>
-            <label style={labelStyle}>Sinopsis</label>
-            <textarea
-              name="sinopsis"
-              value={form.sinopsis}
-              onChange={handleChange}
-              rows="5"
-              placeholder="Escriba una breve descripcion de la pelicula"
-              style={textAreaStyle}
-            />
-          </div>
+            <div className="pelicula-form-actions">
+              <button type="submit" className="pelicula-submit" disabled={saving}>
+                {saving ? "Guardando..." : "Guardar pelicula"}
+              </button>
 
-          <div style={buttonsBoxStyle}>
-            <button
-              type="button"
-              className="panel-btn panel-btn-outline"
-              onClick={() => navigate("/control-panel/peliculas")}
-              disabled={saving}
-            >
-              Cancelar
-            </button>
-
-            <button
-              type="submit"
-              className="panel-btn panel-btn-primary"
-              disabled={saving}
-            >
-              {saving ? "Guardando..." : "Guardar pelicula"}
-            </button>
-          </div>
-        </form>
-      </div>
+              <button
+                type="button"
+                className="pelicula-cancel"
+                onClick={() => navigate("/control-panel/peliculas")}
+              >
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
     </>
   );
 }
-
-function FormField({ label, name, value, onChange, type = "text", placeholder = "" }) {
-  return (
-    <div>
-      <label style={labelStyle}>{label}</label>
-      <input
-        type={type}
-        name={name}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        style={inputStyle}
-      />
-    </div>
-  );
-}
-
-function FormSelect({ label, name, value, onChange, options }) {
-  return (
-    <div>
-      <label style={labelStyle}>{label}</label>
-      <select
-        name={name}
-        value={value}
-        onChange={onChange}
-        style={inputStyle}
-      >
-        <option value="">Seleccione una opcion</option>
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
-function FormSelectEstado({ label, name, value, onChange }) {
-  return (
-    <div>
-      <label style={labelStyle}>{label}</label>
-      <select
-        name={name}
-        value={String(value)}
-        onChange={onChange}
-        style={inputStyle}
-      >
-        <option value="true">Activa</option>
-        <option value="false">Inactiva</option>
-      </select>
-    </div>
-  );
-}
-
-const mainGridStyle = {
-  display: "grid",
-  gridTemplateColumns: "220px 1fr",
-  gap: 22,
-  alignItems: "start",
-};
-
-const twoColumnStyle = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr",
-  gap: 18,
-};
-
-const labelStyle = {
-  display: "block",
-  marginBottom: 8,
-  color: "var(--ink-soft)",
-  fontSize: 13,
-  fontWeight: 800,
-  letterSpacing: "0.04em",
-  textTransform: "uppercase",
-};
-
-const inputStyle = {
-  width: "100%",
-  height: 46,
-  border: "1.5px solid var(--border)",
-  borderRadius: 12,
-  padding: "0 14px",
-  fontFamily: "'DM Sans', sans-serif",
-  fontSize: 14,
-  outline: "none",
-  background: "#ffffff",
-};
-
-const textAreaStyle = {
-  width: "100%",
-  border: "1.5px solid var(--border)",
-  borderRadius: 12,
-  padding: 14,
-  fontFamily: "'DM Sans', sans-serif",
-  fontSize: 14,
-  outline: "none",
-  resize: "vertical",
-  background: "#ffffff",
-};
-
-const posterBoxStyle = {
-  width: "100%",
-  height: 310,
-  border: "1.5px dashed var(--border)",
-  borderRadius: 18,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  overflow: "hidden",
-  cursor: "pointer",
-  background: "var(--surface-2)",
-};
-
-const posterImageStyle = {
-  width: "100%",
-  height: "100%",
-  objectFit: "cover",
-};
-
-const posterTextStyle = {
-  color: "var(--ink-muted)",
-  fontWeight: 700,
-  textAlign: "center",
-};
-
-const buttonsBoxStyle = {
-  display: "flex",
-  justifyContent: "flex-end",
-  gap: 12,
-};
-
-const errorStyle = {
-  marginBottom: 18,
-  color: "#c0392b",
-  fontWeight: 700,
-};

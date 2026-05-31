@@ -1,71 +1,72 @@
 import axios from "axios";
 
-const API = "http://127.0.0.1:8000/api";
-
-const getHeaders = () => {
-  const token = localStorage.getItem("token");
-
-  if (!token) {
-    return {};
-  }
-
-  return {
-    Authorization: `Bearer ${token}`,
-  };
-};
-
-const buildFormData = (pelicula) => {
-  const formData = new FormData();
-
-  Object.entries(pelicula).forEach(([key, value]) => {
-    if (value === undefined || value === null || value === "") {
-      return;
-    }
-
-    if (key === "poster" && !(value instanceof File)) {
-      return;
-    }
-
-    formData.append(key, value);
-  });
-
-  return formData;
-};
+const API_URL = "http://127.0.0.1:8000/api";
 
 export const getPeliculas = async () => {
-  const response = await axios.get(`${API}/peliculas/`);
+  const response = await axios.get(`${API_URL}/peliculas/`);
   return response.data;
 };
 
 export const getPeliculaById = async (id) => {
-  const response = await axios.get(`${API}/peliculas/${id}/`);
+  const response = await axios.get(`${API_URL}/peliculas/${id}/`);
   return response.data;
 };
 
 export const createPelicula = async (pelicula) => {
-  const formData = buildFormData(pelicula);
+  const formData = new FormData();
 
-  const response = await axios.post(`${API}/peliculas/`, formData, {
-    headers: getHeaders(),
+  formData.append("titulo", pelicula.titulo);
+  formData.append("genero", pelicula.genero);
+  formData.append("sinopsis", pelicula.sinopsis);
+  formData.append("descripcion", pelicula.sinopsis);
+  formData.append("duracion", pelicula.duracion);
+  formData.append("clasificacion", pelicula.clasificacion);
+  formData.append("idioma", pelicula.idioma);
+  formData.append("formato", pelicula.formato);
+  formData.append("fecha_estreno", pelicula.fecha_estreno);
+  formData.append("estado", pelicula.estado);
+
+  if (pelicula.poster) {
+    formData.append("poster", pelicula.poster);
+  }
+
+  const response = await axios.post(`${API_URL}/peliculas/`, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
   });
 
   return response.data;
 };
 
 export const updatePelicula = async (id, pelicula) => {
-  const formData = buildFormData(pelicula);
+  const formData = new FormData();
 
-  const response = await axios.put(`${API}/peliculas/${id}/`, formData, {
-    headers: getHeaders(),
+  formData.append("titulo", pelicula.titulo);
+  formData.append("genero", pelicula.genero);
+  formData.append("sinopsis", pelicula.sinopsis);
+  formData.append("descripcion", pelicula.sinopsis);
+  formData.append("duracion", pelicula.duracion);
+  formData.append("clasificacion", pelicula.clasificacion);
+  formData.append("idioma", pelicula.idioma);
+  formData.append("formato", pelicula.formato);
+  formData.append("fecha_estreno", pelicula.fecha_estreno);
+  formData.append("estado", pelicula.estado);
+
+  if (pelicula.poster) {
+    formData.append("poster", pelicula.poster);
+  }
+
+  const response = await axios.put(`${API_URL}/peliculas/${id}/`, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
   });
 
   return response.data;
 };
 
 export const deletePelicula = async (id) => {
-  const response = await axios.delete(`${API}/peliculas/${id}/`, {
-    headers: getHeaders(),
-  });
-
+  const response = await axios.delete(`${API_URL}/peliculas/${id}/`);
   return response.data;
 };

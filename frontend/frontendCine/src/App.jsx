@@ -2,13 +2,13 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/login";
 import Register from "./pages/register";
 import Recover from "./pages/recover";
-import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminDashboard from "./pages/admin/AdminDashboard.jsx";
 import Home from "./pages/user/Home";
 import ProtectedRoute from "./routes/protectedRoute";
 import PanelNav from "./pages/admin/control-panel";
 import { Funciones } from "./pages/admin/PanelPlaceholders";
 import PeliculasList from "./pages/admin/PeliculasList";
-import AddPelicula from "./pages/admin/AddPelicula";
+import AddPelicula from "./pages/admin/AddPelicula.jsx";
 import EditPelicula from "./pages/admin/EditPelicula";
 import UsuariosList from "./pages/admin/UsuariosList";
 import AddUsuario from "./pages/admin/AddUsuario";
@@ -22,6 +22,7 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/recover" element={<Recover />} />
+        <Route path="/control-panel/peliculas/nuevo" element={<AddPelicula />} />
 
         <Route
           path="/admin"

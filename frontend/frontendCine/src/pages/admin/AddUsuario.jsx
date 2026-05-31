@@ -1,343 +1,348 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "../../styles/panel.css";
-
-/* ────────────────────────────────────────────── */
-/* Icons */
-/* ────────────────────────────────────────────── */
-
-function ArrowLeftIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-      <polyline points="15 18 9 12 15 6" />
-    </svg>
-  );
-}
-
-function SaveIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-      <polyline points="17 21 17 13 7 13 7 21" />
-      <polyline points="7 3 7 8 15 8" />
-    </svg>
-  );
-}
-
-function ChevronIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      style={{ width: 14, height: 14 }}
-    >
-      <polyline points="6 9 12 15 18 9" />
-    </svg>
-  );
-}
-
-/* ────────────────────────────────────────────── */
-/* Form */
-/* ────────────────────────────────────────────── */
-
-const EMPTY_FORM = {
-  username: "",
-  password: "",
-  confirmPassword: "",
-  tipo: "Cliente",
-  telefono: "",
-  direccion: "",
-  cargo: "",
-};
+import { createUsuario } from "../../services/usuarioService.js";
 
 export default function AddUsuario() {
   const navigate = useNavigate();
 
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState({
+    nombre: "",
+    correo: "",
+    telefono: "",
+    direccion: "",
+    password: "",
+    rol: "cliente",
+    estado: true,
+  });
 
-  const handleChange = (key, value) => {
-    setForm((prev) => ({
-      ...prev,
-      [key]: value,
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const handleChange = (event) => {
+    const { name, value, type, checked } = event.target;
+
+    setForm((currentForm) => ({
+      ...currentForm,
+      [name]: type === "checkbox" ? checked : value,
     }));
+
+    setError("");
   };
 
-  const handleGuardar = () => {
-    if (form.password !== form.confirmPassword) {
-      alert("Las contraseñas no coinciden");
+  const validateForm = () => {
+    if (!form.nombre.trim()) {
+      return "El nombre es obligatorio";
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.correo.trim())) {
+      return "Ingrese un correo valido";
+    }
+
+    if (form.rol === "cliente" && !form.telefono.trim()) {
+      return "El telefono es obligatorio";
+    }
+
+    if (form.telefono.trim() && !/^[0-9]+$/.test(form.telefono.trim())) {
+      return "El telefono solo debe contener numeros";
+    }
+
+    if (!form.password) {
+      return "La contrasena es obligatoria";
+    }
+
+    if (form.password.length < 6) {
+      return "La contrasena debe tener al menos 6 caracteres";
+    }
+
+    if (!/[A-Za-z]/.test(form.password) || !/[0-9]/.test(form.password)) {
+      return "La contrasena debe incluir letra y numero";
+    }
+
+    return "";
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    const validationError = validateForm();
+
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
-    console.log("Usuario a guardar:", form);
+    try {
+      setSaving(true);
+      setError("");
 
-    /*
-      POST API
+      await createUsuario({
+        nombre: form.nombre.trim(),
+        correo: form.correo.trim(),
+        telefono: form.telefono.trim(),
+        direccion: form.direccion.trim(),
+        password: form.password,
+        rol: form.rol,
+        estado: form.estado,
+      });
 
-      Administrador:
-      {
-        username,
-        password,
-        tipo:"Administrador",
-        cargo
+      navigate("/control-panel/usuarios", {
+        state: {
+          message: `El usuario ${form.nombre} se creo correctamente`,
+        },
+      });
+    } catch (errorResponse) {
+      const data = errorResponse.response?.data;
+
+      if (data?.errors) {
+        const firstKey = Object.keys(data.errors)[0];
+        setError(data.errors[firstKey][0]);
+      } else {
+        setError(data?.message || "No se pudo crear el usuario");
       }
-
-      Cliente:
-      {
-        username,
-        password,
-        tipo:"Cliente",
-        telefono,
-        direccion
-      }
-    */
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
-    <div
-      style={{
-        animation:
-          "slideIn 0.4s cubic-bezier(0.22,1,0.36,1) both",
-      }}
-    >
-      {/* HEADER */}
-
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          flexWrap: "wrap",
-          gap: 16,
-          marginBottom: 30,
-        }}
-      >
-        <div>
-          <h1 className="panel-page-title">
-            Añadir Usuario
-          </h1>
-
-          <p className="panel-page-subtitle">
-            Registra un nuevo usuario del sistema.
-          </p>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            alignItems: "flex-start",
-          }}
-        >
-          <button
-            className="panel-btn panel-btn-ghost"
-            onClick={() =>
-              navigate("/control-panel/usuarios")
-            }
-          >
-            <ArrowLeftIcon />
-            Volver
-          </button>
-
-          <button
-            className="panel-btn panel-btn-primary"
-            onClick={handleGuardar}
-          >
-            <SaveIcon />
-            Guardar
-          </button>
-        </div>
-      </div>
-
-      {/* CARD */}
-
-      <div className="panel-card">
-        <div className="panel-card-header">
-          <span className="panel-card-title">
-            Datos del Usuario
-          </span>
-        </div>
-
-        <div className="panel-card-body">
-
-          {/* Usuario */}
-
-          <Field
-            label="Nombre de Usuario"
-            value={form.username}
-            onChange={(v) =>
-              handleChange("username", v)
-            }
-          />
-
-          {/* Password */}
-
-          <Field
-            label="Contraseña"
-            type="password"
-            value={form.password}
-            onChange={(v) =>
-              handleChange("password", v)
-            }
-          />
-
-          {/* Confirmar */}
-
-          <Field
-            label="Confirmar Contraseña"
-            type="password"
-            value={form.confirmPassword}
-            onChange={(v) =>
-              handleChange("confirmPassword", v)
-            }
-          />
-
-          {/* Tipo */}
-
-          <div
-            style={{
-              marginTop: 20,
-            }}
-          >
-            <label className="form-label">
-              Tipo de Usuario
-            </label>
-
-            <div
-              style={{
-                position: "relative",
-              }}
-            >
-              <select
-                value={form.tipo}
-                onChange={(e) =>
-                  handleChange(
-                    "tipo",
-                    e.target.value
-                  )
-                }
-                style={{
-                    ...inputStyle,
-                    appearance: "none",
-                    WebkitAppearance: "none",
-                    MozAppearance: "none",
-                    paddingRight: "40px",
-                    cursor: "pointer",
-                }}
-              >
-                <option value="Cliente">
-                  Cliente
-                </option>
-
-                <option value="Administrador">
-                  Administrador
-                </option>
-              </select>
-
-              <span
-                style={{
-                  position: "absolute",
-                  right: 12,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                }}
-              >
-                <ChevronIcon />
-              </span>
-            </div>
-          </div>
-
-          {/* CLIENTE */}
-
-          {form.tipo === "Cliente" && (
-            <>
-              <Field
-                label="Teléfono"
-                value={form.telefono}
-                onChange={(v) =>
-                  handleChange("telefono", v)
-                }
-              />
-
-              <Field
-                label="Dirección"
-                value={form.direccion}
-                onChange={(v) =>
-                  handleChange("direccion", v)
-                }
-              />
-            </>
-          )}
-
-          {/* ADMIN */}
-
-          {form.tipo === "Administrador" && (
-            <Field
-              label="Cargo"
-              value={form.cargo}
-              onChange={(v) =>
-                handleChange("cargo", v)
-              }
-            />
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ────────────────────────────────────────────── */
-/* Field */
-/* ────────────────────────────────────────────── */
-
-function Field({
-  label,
-  value,
-  onChange,
-  type = "text",
-}) {
-  return (
-    <div
-      style={{
-        marginBottom: 20,
-      }}
-    >
-      <label
-        style={{
-          display: "block",
-          marginBottom: 8,
-          fontSize: 12,
-          fontWeight: 700,
-          letterSpacing: ".08em",
-          textTransform: "uppercase",
-          color: "var(--ink-soft)",
-        }}
-      >
-        {label}
-      </label>
-
-      <input
-        type={type}
-        value={value}
-        onChange={(e) =>
-          onChange(e.target.value)
+    <>
+      <style>{`
+        .usuario-form-page {
+          min-height: calc(100vh - 90px);
+          background: #f3fbf6;
+          padding: 44px 24px;
+          font-family: "Segoe UI", Arial, sans-serif;
         }
-        style={inputStyle}
-      />
-    </div>
+
+        .usuario-form-card {
+          max-width: 760px;
+          margin: 0 auto;
+          background: #ffffff;
+          border: 1px solid #dcefe4;
+          border-radius: 24px;
+          padding: 34px;
+          box-shadow: 0 18px 48px rgba(0, 100, 38, 0.1);
+        }
+
+        .usuario-form-title {
+          margin: 0;
+          font-size: 34px;
+          color: #102319;
+          font-weight: 500;
+        }
+
+        .usuario-form-subtitle {
+          color: #6c8f76;
+          margin: 10px 0 28px;
+          font-weight: 500;
+        }
+
+        .usuario-form-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 18px;
+        }
+
+        .usuario-field-full {
+          grid-column: 1 / -1;
+        }
+
+        .usuario-label {
+          display: block;
+          margin-bottom: 8px;
+          color: #365940;
+          font-size: 12px;
+          font-weight: 800;
+          letter-spacing: 2px;
+          text-transform: uppercase;
+        }
+
+        .usuario-input,
+        .usuario-select {
+          width: 100%;
+          height: 54px;
+          border: 1.5px solid #d4e8d9;
+          border-radius: 15px;
+          background: #f1f8f4;
+          padding: 0 16px;
+          color: #102319;
+          font-size: 15px;
+          font-weight: 600;
+          outline: none;
+        }
+
+        .usuario-input:focus,
+        .usuario-select:focus {
+          border-color: #009c29;
+          background: #ffffff;
+          box-shadow: 0 0 0 4px rgba(0, 156, 41, 0.12);
+        }
+
+        .usuario-alert {
+          margin-bottom: 18px;
+          padding: 13px 16px;
+          border-radius: 14px;
+          background: #fff0f0;
+          border: 1px solid #ffc7c7;
+          color: #c62828;
+          font-weight: 700;
+          text-align: center;
+        }
+
+        .usuario-check {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          color: #365940;
+          font-weight: 700;
+        }
+
+        .usuario-form-actions {
+          display: flex;
+          gap: 12px;
+          margin-top: 28px;
+        }
+
+        .usuario-submit,
+        .usuario-cancel {
+          height: 54px;
+          border-radius: 15px;
+          padding: 0 24px;
+          font-size: 15px;
+          font-weight: 800;
+          cursor: pointer;
+        }
+
+        .usuario-submit {
+          border: none;
+          background: #009c29;
+          color: #ffffff;
+          box-shadow: 0 14px 28px rgba(0, 156, 41, 0.22);
+        }
+
+        .usuario-cancel {
+          border: 1px solid #bfe8ca;
+          background: #ffffff;
+          color: #009c29;
+        }
+
+        @media (max-width: 760px) {
+          .usuario-form-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .usuario-form-actions {
+            flex-direction: column;
+          }
+        }
+      `}</style>
+
+      <section className="usuario-form-page">
+        <div className="usuario-form-card">
+          <h1 className="usuario-form-title">Anadir usuario</h1>
+          <p className="usuario-form-subtitle">Registra un usuario nuevo en la base de datos.</p>
+
+          {error && <div className="usuario-alert">{error}</div>}
+
+          <form onSubmit={handleSubmit}>
+            <div className="usuario-form-grid">
+              <div className="usuario-field-full">
+                <label className="usuario-label">Nombre completo</label>
+                <input
+                  className="usuario-input"
+                  name="nombre"
+                  value={form.nombre}
+                  onChange={handleChange}
+                  placeholder="Ej. Juan Perez"
+                />
+              </div>
+
+              <div>
+                <label className="usuario-label">Correo electronico</label>
+                <input
+                  className="usuario-input"
+                  name="correo"
+                  type="email"
+                  value={form.correo}
+                  onChange={handleChange}
+                  placeholder="correo@gmail.com"
+                />
+              </div>
+
+              <div>
+                <label className="usuario-label">Telefono</label>
+                <input
+                  className="usuario-input"
+                  name="telefono"
+                  value={form.telefono}
+                  onChange={handleChange}
+                  placeholder="77777777"
+                />
+              </div>
+
+              <div>
+                <label className="usuario-label">Rol</label>
+                <select
+                  className="usuario-select"
+                  name="rol"
+                  value={form.rol}
+                  onChange={handleChange}
+                >
+                  <option value="cliente">Cliente</option>
+                  <option value="admin">Administrador</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="usuario-label">Contrasena</label>
+                <input
+                  className="usuario-input"
+                  name="password"
+                  type="password"
+                  value={form.password}
+                  onChange={handleChange}
+                  placeholder="Ingrese contrasena"
+                />
+              </div>
+
+              <div className="usuario-field-full">
+                <label className="usuario-label">Direccion</label>
+                <input
+                  className="usuario-input"
+                  name="direccion"
+                  value={form.direccion}
+                  onChange={handleChange}
+                  placeholder="Zona o direccion"
+                />
+              </div>
+
+              <label className="usuario-check">
+                <input
+                  type="checkbox"
+                  name="estado"
+                  checked={form.estado}
+                  onChange={handleChange}
+                />
+                Usuario activo
+              </label>
+            </div>
+
+            <div className="usuario-form-actions">
+              <button type="submit" className="usuario-submit" disabled={saving}>
+                {saving ? "Guardando..." : "Guardar usuario"}
+              </button>
+
+              <button
+                type="button"
+                className="usuario-cancel"
+                onClick={() => navigate("/control-panel/usuarios")}
+              >
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+    </>
   );
 }
-
-/* ────────────────────────────────────────────── */
-/* Shared Input */
-/* ────────────────────────────────────────────── */
-
-const inputStyle = {
-  width: "100%",
-  padding: "12px 14px",
-  borderRadius: "10px",
-  border: "1px solid var(--border)",
-  background: "var(--g-mist)",
-  fontSize: "14px",
-  outline: "none",
-};

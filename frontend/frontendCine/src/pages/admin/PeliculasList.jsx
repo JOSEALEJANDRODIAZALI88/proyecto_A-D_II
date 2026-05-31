@@ -1,541 +1,672 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { deletePelicula, getPeliculas } from "../../services/peliculaService";
-import "../../styles/panel.css";
-
-const API_HOST = "http://127.0.0.1:8000";
-
-const getPosterUrl = (poster) => {
-  if (!poster) {
-    return "";
-  }
-
-  if (poster.startsWith("http")) {
-    return poster;
-  }
-
-  return `${API_HOST}${poster}`;
-};
-
-function PlusIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
-      <line x1="12" y1="5" x2="12" y2="19" />
-      <line x1="5" y1="12" x2="19" y2="12" />
-    </svg>
-  );
-}
-
-function RefreshIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="23 4 23 10 17 10" />
-      <polyline points="1 20 1 14 7 14" />
-      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-    </svg>
-  );
-}
-
-function EditIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-    </svg>
-  );
-}
-
-function TrashIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="3 6 5 6 21 6" />
-      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-      <path d="M10 11v6M14 11v6" />
-      <path d="M9 6V4h6v2" />
-    </svg>
-  );
-}
-
-function AlertIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-      <line x1="12" y1="9" x2="12" y2="13" />
-      <line x1="12" y1="17" x2="12.01" y2="17" />
-    </svg>
-  );
-}
-
-function DeleteModal({ pelicula, onConfirm, onCancel, loading }) {
-  return (
-    <>
-      <div
-        onClick={onCancel}
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 400,
-          background: "rgba(0,0,0,0.40)",
-          backdropFilter: "blur(3px)",
-        }}
-      />
-
-      <div
-        role="dialog"
-        aria-modal="true"
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 401,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "16px",
-        }}
-      >
-        <div
-          style={{
-            background: "var(--surface)",
-            borderRadius: "20px",
-            padding: "36px 32px 28px",
-            width: "100%",
-            maxWidth: "420px",
-            boxShadow: "0 24px 64px rgba(0,0,0,0.18)",
-            border: "1px solid var(--border)",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            textAlign: "center",
-          }}
-        >
-          <div
-            style={{
-              width: 54,
-              height: 54,
-              borderRadius: "16px",
-              background: "#fff4f3",
-              border: "1px solid rgba(192,57,43,0.18)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#c0392b",
-              marginBottom: "18px",
-            }}
-          >
-            <AlertIcon />
-          </div>
-
-          <p
-            style={{
-              fontFamily: "'Bebas Neue', sans-serif",
-              fontSize: 24,
-              letterSpacing: "0.04em",
-              color: "var(--ink)",
-              marginBottom: 8,
-            }}
-          >
-            Eliminar pelicula
-          </p>
-
-          <p style={{ fontSize: 14, color: "var(--ink-muted)", lineHeight: 1.6, marginBottom: 6 }}>
-            Estas seguro de que deseas eliminar
-          </p>
-
-          <p style={{ fontSize: 15, fontWeight: 700, color: "var(--ink)", marginBottom: 20 }}>
-            {pelicula.titulo}
-          </p>
-
-          <p style={{ fontSize: 13, color: "var(--ink-muted)", marginBottom: 28, lineHeight: 1.5 }}>
-            Esta accion eliminara la pelicula de la base de datos.
-          </p>
-
-          <div style={{ display: "flex", gap: 10, width: "100%" }}>
-            <button
-              onClick={onCancel}
-              disabled={loading}
-              style={{
-                flex: 1,
-                padding: "11px 0",
-                borderRadius: "10px",
-                fontFamily: "'DM Sans', sans-serif",
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: "pointer",
-                background: "transparent",
-                color: "var(--ink-soft)",
-                border: "1.5px solid var(--border)",
-              }}
-            >
-              Cancelar
-            </button>
-
-            <button
-              onClick={() => onConfirm(pelicula.id)}
-              disabled={loading}
-              style={{
-                flex: 1,
-                padding: "11px 0",
-                borderRadius: "10px",
-                fontFamily: "'DM Sans', sans-serif",
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: "pointer",
-                background: "#c0392b",
-                color: "white",
-                border: "none",
-                boxShadow: "0 4px 14px rgba(192,57,43,0.30)",
-              }}
-            >
-              {loading ? "Eliminando..." : "Si, eliminar"}
-            </button>
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
-
-const GENRE_COLORS = {
-  "Ciencia Ficcion": "#006699",
-  "Ciencia Ficción": "#006699",
-  Accion: "#7a0000",
-  "Acción": "#7a0000",
-  Drama: "#5a0080",
-  Romance: "#7a0033",
-  Thriller: "#003366",
-  Fantasy: "#004d26",
-  Comedia: "#7a5c00",
-};
+import { deletePelicula, getPeliculas } from "../../services/peliculaService.js";
 
 export default function PeliculasList() {
   const navigate = useNavigate();
   const location = useLocation();
 
   const [peliculas, setPeliculas] = useState([]);
-  const [toDelete, setToDelete] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [deleting, setDeleting] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+  const [message, setMessage] = useState(location.state?.message || "");
   const [error, setError] = useState("");
-  const [notification, setNotification] = useState(location.state?.message || "");
+  const [currentPage, setCurrentPage] = useState(1);
 
-  const normalizarPeliculas = (data) => {
-    if (Array.isArray(data)) {
-      return data;
-    }
+  const itemsPerPage = 10;
 
-    if (Array.isArray(data.results)) {
-      return data.results;
-    }
+  const totalPages = Math.ceil(peliculas.length / itemsPerPage);
 
-    return [];
-  };
+  const peliculasPaginadas = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
 
-  const cargarPeliculas = async () => {
-    setLoading(true);
-    setError("");
+    return peliculas.slice(startIndex, endIndex);
+  }, [peliculas, currentPage]);
 
+  const peliculasActivas = peliculas.filter((pelicula) => pelicula.estado).length;
+
+  const loadPeliculas = async () => {
     try {
+      setLoading(true);
+      setError("");
+
       const data = await getPeliculas();
-      setPeliculas(normalizarPeliculas(data));
-    } catch {
+      setPeliculas(Array.isArray(data) ? data : []);
+      setCurrentPage(1);
+    } catch (errorResponse) {
       setError("No se pudieron cargar las peliculas");
-      setPeliculas([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleConfirmDelete = async (id) => {
-    setDeleting(true);
-    setError("");
-
-    try {
-      const pelicula = peliculas.find((item) => item.id === id);
-      await deletePelicula(id);
-      setToDelete(null);
-      setNotification(`La pelicula "${pelicula?.titulo || ""}" se elimino correctamente`);
-      await cargarPeliculas();
-    } catch {
-      setError("No se pudo eliminar la pelicula");
-    } finally {
-      setDeleting(false);
-    }
-  };
-
   useEffect(() => {
-    cargarPeliculas();
+    loadPeliculas();
   }, []);
 
   useEffect(() => {
-    if (!notification) {
+    if (!message) {
       return;
     }
 
+    window.history.replaceState({}, document.title);
+
     const timer = setTimeout(() => {
-      setNotification("");
-      navigate(location.pathname, { replace: true, state: null });
+      setMessage("");
     }, 3500);
 
     return () => clearTimeout(timer);
-  }, [notification, navigate, location.pathname]);
+  }, [message]);
+
+  const getPosterUrl = (poster) => {
+    if (!poster) {
+      return "";
+    }
+
+    if (poster.startsWith("http")) {
+      return poster;
+    }
+
+    if (poster.startsWith("/media")) {
+      return `http://127.0.0.1:8000${poster}`;
+    }
+
+    return `http://127.0.0.1:8000/media/${poster}`;
+  };
+
+  const getEstadoTexto = (estado) => {
+    return estado ? "ACTIVA" : "INACTIVA";
+  };
+
+  const handleDelete = async (pelicula) => {
+    const confirmDelete = window.confirm(`Deseas eliminar ${pelicula.titulo}?`);
+
+    if (!confirmDelete) {
+      return;
+    }
+
+    try {
+      setDeletingId(pelicula.id);
+      setError("");
+
+      await deletePelicula(pelicula.id);
+      setMessage("Pelicula eliminada correctamente");
+
+      const data = await getPeliculas();
+      const newPeliculas = Array.isArray(data) ? data : [];
+
+      setPeliculas(newPeliculas);
+
+      const newTotalPages = Math.ceil(newPeliculas.length / itemsPerPage);
+
+      if (currentPage > newTotalPages && newTotalPages > 0) {
+        setCurrentPage(newTotalPages);
+      }
+    } catch (errorResponse) {
+      const data = errorResponse.response?.data;
+      setError(data?.message || "No se pudo eliminar la pelicula");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const goToFirstPage = () => {
+    setCurrentPage(1);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const goToPreviousPage = () => {
+    setCurrentPage((page) => Math.max(page - 1, 1));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const goToNextPage = () => {
+    setCurrentPage((page) => Math.min(page + 1, totalPages));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const goToLastPage = () => {
+    setCurrentPage(totalPages);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+
+    let startPage = Math.max(currentPage - 2, 1);
+    let endPage = Math.min(startPage + maxVisiblePages - 1, totalPages);
+
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(endPage - maxVisiblePages + 1, 1);
+    }
+
+    for (let page = startPage; page <= endPage; page += 1) {
+      pages.push(page);
+    }
+
+    return pages;
+  };
+
+  const startItem = peliculas.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
+  const endItem = Math.min(currentPage * itemsPerPage, peliculas.length);
 
   return (
     <>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16, marginBottom: 28 }}>
-        <div>
-          <h1 className="panel-page-title">Lista de Peliculas</h1>
-          <p className="panel-page-subtitle">
-            {peliculas.length} pelicula{peliculas.length !== 1 ? "s" : ""} registrada{peliculas.length !== 1 ? "s" : ""}
-          </p>
-        </div>
+      <style>{`
+        .peliculas-page {
+          width: 100%;
+          min-height: calc(100vh - 90px);
+          background: #f3fbf6;
+          padding: 48px 38px 120px;
+          font-family: "Segoe UI", Arial, sans-serif;
+        }
 
-        <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
-          <button
-            className="panel-btn panel-btn-outline"
-            onClick={cargarPeliculas}
-            title="Refrescar lista"
-            disabled={loading}
-          >
-            <RefreshIcon />
-            {loading ? "Cargando..." : "Refrescar"}
-          </button>
+        .peliculas-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 24px;
+          margin-bottom: 42px;
+        }
 
-          <button
-            className="panel-btn panel-btn-primary"
-            onClick={() => navigate("/control-panel/peliculas/nueva")}
-          >
-            <PlusIcon />
-            Anadir pelicula
-          </button>
-        </div>
-      </div>
+        .peliculas-title {
+          margin: 0;
+          font-size: 38px;
+          font-weight: 500;
+          color: #102319;
+          letter-spacing: 2px;
+        }
 
-      {notification && (
-        <div
-          className="panel-card"
-          style={{
-            padding: "14px 18px",
-            marginBottom: 16,
-            background: "#e8f8ee",
-            color: "#057a28",
-            fontWeight: 800,
-            border: "1px solid #a7e5b8",
-          }}
-        >
-          {notification}
-        </div>
-      )}
+        .peliculas-subtitle {
+          margin: 14px 0 0;
+          color: #6c8f76;
+          font-size: 15px;
+          font-weight: 500;
+        }
 
-      {error && (
-        <div className="panel-card" style={{ padding: 16, marginBottom: 16, color: "#c0392b", fontWeight: 700 }}>
-          {error}
-        </div>
-      )}
+        .peliculas-actions {
+          display: flex;
+          gap: 12px;
+          align-items: center;
+        }
 
-      {loading ? (
-        <div className="panel-card">
-          <div className="panel-placeholder">
-            <p className="panel-placeholder-title">Cargando peliculas...</p>
-            <p className="panel-placeholder-sub">Espere un momento.</p>
+        .peliculas-btn {
+          height: 44px;
+          border-radius: 12px;
+          padding: 0 20px;
+          border: 1px solid #bfe8ca;
+          background: #ffffff;
+          color: #009c29;
+          font-size: 14px;
+          font-weight: 800;
+          cursor: pointer;
+          transition: 0.18s ease;
+        }
+
+        .peliculas-btn:hover {
+          background: #effaf2;
+        }
+
+        .peliculas-btn-primary {
+          border: none;
+          background: #009c29;
+          color: #ffffff;
+          box-shadow: 0 12px 26px rgba(0, 156, 41, 0.22);
+        }
+
+        .peliculas-btn-primary:hover {
+          background: #008425;
+        }
+
+        .peliculas-alert {
+          padding: 14px 18px;
+          border-radius: 14px;
+          margin-bottom: 18px;
+          font-size: 14px;
+          font-weight: 700;
+        }
+
+        .peliculas-alert-ok {
+          background: #effaf2;
+          border: 1px solid #bfe8ca;
+          color: #087b28;
+        }
+
+        .peliculas-alert-error {
+          background: #fff0f0;
+          border: 1px solid #ffc7c7;
+          color: #c62828;
+        }
+
+        .peliculas-summary {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 16px;
+          margin-bottom: 18px;
+          padding: 14px 18px;
+          background: #ffffff;
+          border: 1px solid #dcefe4;
+          border-radius: 16px;
+          color: #6c8f76;
+          font-size: 14px;
+          font-weight: 700;
+        }
+
+        .peliculas-list {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+
+        .pelicula-card {
+          display: grid;
+          grid-template-columns: 52px 76px 1fr auto;
+          align-items: center;
+          gap: 18px;
+          min-height: 106px;
+          background: #ffffff;
+          border: 1px solid #dcefe4;
+          border-left: 6px solid #009c29;
+          border-radius: 16px;
+          padding: 18px 22px;
+          box-shadow: 0 14px 34px rgba(0, 100, 38, 0.08);
+        }
+
+        .pelicula-card-inactive {
+          border-left-color: #9b0000;
+        }
+
+        .pelicula-index {
+          color: #a9eec0;
+          font-size: 25px;
+          font-weight: 400;
+        }
+
+        .pelicula-poster {
+          width: 70px;
+          height: 92px;
+          border-radius: 12px;
+          overflow: hidden;
+          border: 1px solid #cfe6d5;
+          background: #f1f8f4;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #6c8f76;
+          font-size: 12px;
+          font-weight: 600;
+          text-align: center;
+        }
+
+        .pelicula-poster img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+
+        .pelicula-title {
+          margin: 0 0 9px;
+          font-size: 23px;
+          font-weight: 500;
+          color: #102319;
+        }
+
+        .pelicula-meta {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 12px;
+          align-items: center;
+          color: #6c8f76;
+          font-size: 15px;
+          font-weight: 600;
+        }
+
+        .pelicula-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 5px 12px;
+          border-radius: 999px;
+          background: #005c18;
+          color: #ffffff;
+          font-size: 12px;
+          font-weight: 900;
+          text-transform: uppercase;
+        }
+
+        .pelicula-badge-soft {
+          background: #e5f8ea;
+          color: #008425;
+          border: 1px solid #bfe8ca;
+        }
+
+        .pelicula-badge-danger {
+          background: #9b0000;
+          color: #ffffff;
+        }
+
+        .pelicula-actions {
+          display: flex;
+          gap: 10px;
+        }
+
+        .pelicula-action-btn {
+          height: 42px;
+          min-width: 76px;
+          border-radius: 10px;
+          border: 1px solid #bfe8ca;
+          background: #ffffff;
+          color: #009c29;
+          font-size: 14px;
+          font-weight: 800;
+          cursor: pointer;
+          transition: 0.18s ease;
+        }
+
+        .pelicula-delete-btn {
+          min-width: 50px;
+          border-color: #ffc7c7;
+          color: #d93025;
+        }
+
+        .pelicula-action-btn:hover {
+          background: #effaf2;
+        }
+
+        .pelicula-delete-btn:hover {
+          background: #fff0f0;
+        }
+
+        .peliculas-empty {
+          background: #ffffff;
+          border: 1px solid #dcefe4;
+          border-radius: 16px;
+          padding: 30px;
+          color: #6c8f76;
+          font-weight: 700;
+        }
+
+        .peliculas-pagination {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 10px;
+          margin-top: 34px;
+          flex-wrap: wrap;
+        }
+
+        .pagination-btn {
+          height: 42px;
+          min-width: 42px;
+          padding: 0 14px;
+          border-radius: 12px;
+          border: 1px solid #bfe8ca;
+          background: #ffffff;
+          color: #009c29;
+          font-size: 14px;
+          font-weight: 800;
+          cursor: pointer;
+          transition: 0.18s ease;
+        }
+
+        .pagination-btn:hover {
+          background: #effaf2;
+        }
+
+        .pagination-btn:disabled {
+          opacity: 0.45;
+          cursor: not-allowed;
+          background: #ffffff;
+        }
+
+        .pagination-btn-active {
+          background: #009c29;
+          color: #ffffff;
+          border-color: #009c29;
+          box-shadow: 0 10px 22px rgba(0, 156, 41, 0.22);
+        }
+
+        .pagination-btn-active:hover {
+          background: #008425;
+        }
+
+        .pagination-info {
+          width: 100%;
+          text-align: center;
+          margin-top: 14px;
+          color: #6c8f76;
+          font-size: 14px;
+          font-weight: 700;
+        }
+
+        @media (max-width: 900px) {
+          .peliculas-page {
+            padding: 28px 18px 100px;
+          }
+
+          .peliculas-header {
+            flex-direction: column;
+          }
+
+          .peliculas-actions {
+            width: 100%;
+            flex-direction: column;
+          }
+
+          .peliculas-btn {
+            width: 100%;
+          }
+
+          .peliculas-summary {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+
+          .pelicula-card {
+            grid-template-columns: 1fr;
+          }
+
+          .pelicula-actions {
+            justify-content: flex-start;
+          }
+        }
+      `}</style>
+
+      <section className="peliculas-page">
+        <div className="peliculas-header">
+          <div>
+            <h1 className="peliculas-title">Lista de Peliculas</h1>
+            <p className="peliculas-subtitle">{peliculasActivas} peliculas activas</p>
+          </div>
+
+          <div className="peliculas-actions">
+            <button type="button" className="peliculas-btn" onClick={loadPeliculas}>
+              Refrescar
+            </button>
+
+            <button
+              type="button"
+              className="peliculas-btn peliculas-btn-primary"
+              onClick={() => navigate("/control-panel/peliculas/nuevo")}
+            >
+              + Anadir pelicula
+            </button>
           </div>
         </div>
-      ) : peliculas.length === 0 ? (
-        <div className="panel-card">
-          <div className="panel-placeholder">
-            <div className="panel-placeholder-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.6l13.5-4.6c1-.3 2.1.3 2.4 1.3L20.2 6Z" />
-                <path d="m6.2 5.3 3.1 3.9" />
-                <path d="m12.4 3.4 3.1 3.9" />
-                <path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-8Z" />
-              </svg>
-            </div>
-            <p className="panel-placeholder-title">Sin peliculas registradas</p>
-            <p className="panel-placeholder-sub">Anade una nueva pelicula para que aparezca aqui.</p>
-          </div>
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {peliculas.map((pelicula, idx) => (
-            <PeliculaRow
-              key={pelicula.id}
-              pelicula={pelicula}
-              idx={idx}
-              onEdit={() => navigate(`/control-panel/peliculas/editar/${pelicula.id}`)}
-              onDelete={() => setToDelete(pelicula)}
-            />
-          ))}
-        </div>
-      )}
 
-      {toDelete && (
-        <DeleteModal
-          pelicula={toDelete}
-          onConfirm={handleConfirmDelete}
-          onCancel={() => setToDelete(null)}
-          loading={deleting}
-        />
-      )}
-    </>
-  );
-}
-
-function PeliculaRow({ pelicula, idx, onEdit, onDelete }) {
-  const accentColor = GENRE_COLORS[pelicula.genero] ?? "var(--g-darker)";
-  const posterUrl = getPosterUrl(pelicula.poster);
-
-  return (
-    <div
-      className="panel-card"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 0,
-        overflow: "hidden",
-        animation: `slideIn 0.4s cubic-bezier(0.22,1,0.36,1) ${idx * 0.07}s both`,
-      }}
-    >
-      <div style={{ width: 4, alignSelf: "stretch", background: accentColor, flexShrink: 0 }} />
-
-      <span
-        style={{
-          padding: "0 18px",
-          fontFamily: "'Bebas Neue', sans-serif",
-          fontSize: 22,
-          color: "var(--border)",
-          flexShrink: 0,
-          minWidth: 52,
-          textAlign: "center",
-          letterSpacing: "0.05em",
-        }}
-      >
-        {String(idx + 1).padStart(2, "0")}
-      </span>
-
-      <div
-        style={{
-          width: 64,
-          height: 88,
-          borderRadius: 12,
-          overflow: "hidden",
-          background: "var(--surface-2)",
-          border: "1px solid var(--border)",
-          flexShrink: 0,
-        }}
-      >
-        {posterUrl ? (
-          <img
-            src={posterUrl}
-            alt={pelicula.titulo}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-          />
-        ) : (
-          <div
-            style={{
-              width: "100%",
-              height: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 11,
-              color: "var(--ink-muted)",
-              textAlign: "center",
-              padding: 6,
-            }}
-          >
-            Sin poster
+        {message && (
+          <div className="peliculas-alert peliculas-alert-ok">
+            {message}
           </div>
         )}
-      </div>
 
-      <div style={{ flex: 1, padding: "18px 18px", minWidth: 0 }}>
-        <p
-          style={{
-            fontFamily: "'Bebas Neue', sans-serif",
-            fontSize: 20,
-            letterSpacing: "0.04em",
-            color: "var(--ink)",
-            marginBottom: 6,
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-        >
-          {pelicula.titulo}
-        </p>
+        {error && (
+          <div className="peliculas-alert peliculas-alert-error">
+            {error}
+          </div>
+        )}
 
-        <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-          <span
-            style={{
-              fontSize: 11,
-              fontWeight: 700,
-              letterSpacing: "0.07em",
-              textTransform: "uppercase",
-              color: "white",
-              background: accentColor,
-              padding: "3px 9px",
-              borderRadius: 20,
-            }}
-          >
-            {pelicula.genero || "Sin genero"}
-          </span>
+        {loading ? (
+          <div className="peliculas-empty">Cargando peliculas...</div>
+        ) : peliculas.length === 0 ? (
+          <div className="peliculas-empty">No hay peliculas registradas.</div>
+        ) : (
+          <>
+            <div className="peliculas-summary">
+              <span>
+                Mostrando {startItem} - {endItem} de {peliculas.length} peliculas
+              </span>
+              <span>
+                Pagina {currentPage} de {totalPages}
+              </span>
+            </div>
 
-          <span style={{ fontSize: 13, color: "var(--ink-muted)" }}>
-            {pelicula.duracion || 0} min
-          </span>
+            <div className="peliculas-list">
+              {peliculasPaginadas.map((pelicula, index) => {
+                const posterUrl = getPosterUrl(pelicula.poster);
 
-          <span
-            style={{
-              fontSize: 11,
-              fontWeight: 700,
-              letterSpacing: "0.06em",
-              color: "var(--g-dark)",
-              background: "var(--g-pale)",
-              border: "1px solid rgba(0,156,41,0.18)",
-              padding: "3px 9px",
-              borderRadius: 20,
-            }}
-          >
-            {pelicula.clasificacion || "S/C"}
-          </span>
+                return (
+                  <article
+                    key={pelicula.id}
+                    className={`pelicula-card ${
+                      pelicula.estado ? "" : "pelicula-card-inactive"
+                    }`}
+                  >
+                    <div className="pelicula-index">
+                      {String((currentPage - 1) * itemsPerPage + index + 1).padStart(2, "0")}
+                    </div>
 
-          <span
-            style={{
-              fontSize: 11,
-              fontWeight: 800,
-              letterSpacing: "0.06em",
-              color: pelicula.estado ? "#057a28" : "#777",
-              background: pelicula.estado ? "#e8f8ee" : "#eeeeee",
-              border: pelicula.estado ? "1px solid #a7e5b8" : "1px solid #dddddd",
-              padding: "3px 9px",
-              borderRadius: 20,
-            }}
-          >
-            {pelicula.estado ? "ACTIVA" : "INACTIVA"}
-          </span>
-        </div>
-      </div>
+                    <div className="pelicula-poster">
+                      {posterUrl ? (
+                        <img src={posterUrl} alt={pelicula.titulo} />
+                      ) : (
+                        <span>Sin poster</span>
+                      )}
+                    </div>
 
-      <div style={{ display: "flex", gap: 8, padding: "0 20px", flexShrink: 0 }}>
-        <button
-          className="panel-btn panel-btn-outline"
-          onClick={onEdit}
-          title="Editar"
-          style={{ padding: "8px 14px" }}
-        >
-          <EditIcon />
-          Editar
-        </button>
+                    <div>
+                      <h2 className="pelicula-title">{pelicula.titulo}</h2>
 
-        <button
-          className="panel-btn panel-btn-danger"
-          onClick={onDelete}
-          title="Eliminar"
-          style={{ padding: "8px 12px" }}
-        >
-          <TrashIcon />
-        </button>
-      </div>
-    </div>
+                      <div className="pelicula-meta">
+                        {pelicula.genero && (
+                          <span className="pelicula-badge">
+                            {pelicula.genero}
+                          </span>
+                        )}
+
+                        {pelicula.duracion && <span>{pelicula.duracion} min</span>}
+
+                        {pelicula.clasificacion && (
+                          <span className="pelicula-badge pelicula-badge-soft">
+                            {pelicula.clasificacion}
+                          </span>
+                        )}
+
+                        {pelicula.formato && (
+                          <span className="pelicula-badge pelicula-badge-soft">
+                            {pelicula.formato}
+                          </span>
+                        )}
+
+                        <span
+                          className={`pelicula-badge ${
+                            pelicula.estado ? "pelicula-badge-soft" : "pelicula-badge-danger"
+                          }`}
+                        >
+                          {getEstadoTexto(pelicula.estado)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="pelicula-actions">
+                      <button
+                        type="button"
+                        className="pelicula-action-btn"
+                        onClick={() => navigate(`/control-panel/peliculas/editar/${pelicula.id}`)}
+                      >
+                        Editar
+                      </button>
+
+                      <button
+                        type="button"
+                        className="pelicula-action-btn pelicula-delete-btn"
+                        disabled={deletingId === pelicula.id}
+                        onClick={() => handleDelete(pelicula)}
+                      >
+                        {deletingId === pelicula.id ? "..." : "Eliminar"}
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+
+            {totalPages > 1 && (
+              <div className="peliculas-pagination">
+                <button
+                  type="button"
+                  className="pagination-btn"
+                  onClick={goToFirstPage}
+                  disabled={currentPage === 1}
+                >
+                  Primero
+                </button>
+
+                <button
+                  type="button"
+                  className="pagination-btn"
+                  onClick={goToPreviousPage}
+                  disabled={currentPage === 1}
+                >
+                  Anterior
+                </button>
+
+                {getPageNumbers().map((page) => (
+                  <button
+                    type="button"
+                    key={page}
+                    className={`pagination-btn ${
+                      currentPage === page ? "pagination-btn-active" : ""
+                    }`}
+                    onClick={() => {
+                      setCurrentPage(page);
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                  >
+                    {page}
+                  </button>
+                ))}
+
+                <button
+                  type="button"
+                  className="pagination-btn"
+                  onClick={goToNextPage}
+                  disabled={currentPage === totalPages}
+                >
+                  Siguiente
+                </button>
+
+                <button
+                  type="button"
+                  className="pagination-btn"
+                  onClick={goToLastPage}
+                  disabled={currentPage === totalPages}
+                >
+                  Ultimo
+                </button>
+
+                <div className="pagination-info">
+                  {itemsPerPage} peliculas por pagina
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </section>
+    </>
   );
 }
