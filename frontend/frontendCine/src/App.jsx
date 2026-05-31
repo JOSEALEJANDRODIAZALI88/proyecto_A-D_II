@@ -19,10 +19,10 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
+
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/recover" element={<Recover />} />
-        <Route path="/control-panel/peliculas/nuevo" element={<AddPelicula />} />
 
         <Route
           path="/admin"
@@ -41,18 +41,17 @@ export default function App() {
             </ProtectedRoute>
           }
         >
+          <Route index element={<Navigate to="usuarios" replace />} />
+
           <Route path="usuarios" element={<UsuariosList />} />
           <Route path="usuarios/nuevo" element={<AddUsuario />} />
           <Route path="usuarios/editar/:id" element={<EditUsuario />} />
 
           <Route path="funciones" element={<Funciones />} />
 
-
           <Route path="peliculas" element={<PeliculasList />} />
-          <Route path="peliculas/nueva" element={<AddPelicula />} />
+          <Route path="peliculas/nuevo" element={<AddPelicula />} />
           <Route path="peliculas/editar/:id" element={<EditPelicula />} />
-          
-
         </Route>
 
         <Route
@@ -64,7 +63,7 @@ export default function App() {
           }
         />
 
-
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
   );

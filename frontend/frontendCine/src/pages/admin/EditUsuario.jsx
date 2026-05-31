@@ -11,14 +11,24 @@ export default function EditUsuario() {
     correo: "",
     telefono: "",
     direccion: "",
+    rol: "Cliente",
     password: "",
-    rol: "cliente",
     estado: true,
   });
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  const normalizeRol = (rol) => {
+    const value = String(rol || "").toLowerCase();
+
+    if (value === "admin" || value === "administrador") {
+      return "Administrador";
+    }
+
+    return "Cliente";
+  };
 
   const loadUsuario = async () => {
     try {
@@ -32,8 +42,8 @@ export default function EditUsuario() {
         correo: data.correo || "",
         telefono: data.telefono || "",
         direccion: data.direccion || "",
+        rol: normalizeRol(data.rol),
         password: "",
-        rol: data.rol === "admin" ? "admin" : "cliente",
         estado: Boolean(data.estado),
       });
     } catch (errorResponse) {
@@ -63,27 +73,48 @@ export default function EditUsuario() {
       return "El nombre es obligatorio";
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.correo.trim())) {
-      return "Ingrese un correo valido";
+    if (!form.correo.trim()) {
+      return "El correo es obligatorio";
     }
 
-    if (form.rol === "cliente" && !form.telefono.trim()) {
+    if (!form.correo.includes("@") || !form.correo.includes(".")) {
+      return "El correo no tiene formato valido";
+    }
+
+    if (!form.telefono.trim()) {
       return "El telefono es obligatorio";
     }
 
-    if (form.telefono.trim() && !/^[0-9]+$/.test(form.telefono.trim())) {
-      return "El telefono solo debe contener numeros";
-    }
-
-    if (form.password && form.password.length < 6) {
+    if (form.password.trim() && form.password.trim().length < 6) {
       return "La contrasena debe tener al menos 6 caracteres";
     }
 
-    if (form.password && (!/[A-Za-z]/.test(form.password) || !/[0-9]/.test(form.password))) {
-      return "La contrasena debe incluir letra y numero";
+    return "";
+  };
+
+  const getErrorMessage = (errorResponse) => {
+    const data = errorResponse.response?.data;
+
+    if (data?.message) {
+      return data.message;
     }
 
-    return "";
+    if (data?.detail) {
+      return data.detail;
+    }
+
+    if (data?.errors) {
+      const firstKey = Object.keys(data.errors)[0];
+      const firstError = data.errors[firstKey];
+
+      if (Array.isArray(firstError)) {
+        return firstError[0];
+      }
+
+      return String(firstError);
+    }
+
+    return "No se pudo actualizar el usuario";
   };
 
   const handleSubmit = async (event) => {
@@ -96,39 +127,28 @@ export default function EditUsuario() {
       return;
     }
 
+    const payload = {
+      nombre: form.nombre.trim(),
+      correo: form.correo.trim(),
+      telefono: form.telefono.trim(),
+      direccion: form.direccion.trim(),
+      rol: form.rol,
+      estado: form.estado,
+    };
+
+    if (form.password.trim()) {
+      payload.password = form.password.trim();
+    }
+
     try {
       setSaving(true);
       setError("");
 
-      const payload = {
-        nombre: form.nombre.trim(),
-        correo: form.correo.trim(),
-        telefono: form.telefono.trim(),
-        direccion: form.direccion.trim(),
-        rol: form.rol,
-        estado: form.estado,
-      };
-
-      if (form.password) {
-        payload.password = form.password;
-      }
-
       await updateUsuario(id, payload);
 
-      navigate("/control-panel/usuarios", {
-        state: {
-          message: `El usuario ${form.nombre} se actualizo correctamente`,
-        },
-      });
+      navigate("/control-panel/usuarios");
     } catch (errorResponse) {
-      const data = errorResponse.response?.data;
-
-      if (data?.errors) {
-        const firstKey = Object.keys(data.errors)[0];
-        setError(data.errors[firstKey][0]);
-      } else {
-        setError(data?.message || "No se pudo actualizar el usuario");
-      }
+      setError(getErrorMessage(errorResponse));
     } finally {
       setSaving(false);
     }
@@ -138,39 +158,62 @@ export default function EditUsuario() {
     <>
       <style>{`
         .usuario-form-page {
-          min-height: calc(100vh - 90px);
-          background: #f3fbf6;
-          padding: 44px 24px;
+          min-height: calc(100vh - 92px);
+          background:
+            radial-gradient(circle at 0% 0%, rgba(0, 156, 41, 0.07), transparent 28%),
+            radial-gradient(circle at 100% 100%, rgba(0, 156, 41, 0.08), transparent 32%),
+            #f3fbf6;
+          padding: 46px 28px 110px;
           font-family: "Segoe UI", Arial, sans-serif;
         }
 
         .usuario-form-card {
-          max-width: 760px;
+          max-width: 820px;
           margin: 0 auto;
           background: #ffffff;
           border: 1px solid #dcefe4;
           border-radius: 24px;
-          padding: 34px;
+          padding: 36px;
           box-shadow: 0 18px 48px rgba(0, 100, 38, 0.1);
         }
 
-        .usuario-form-title {
+        .usuario-title {
           margin: 0;
-          font-size: 34px;
           color: #102319;
-          font-weight: 500;
+          font-size: 34px;
+          font-weight: 600;
+          letter-spacing: 1.5px;
         }
 
-        .usuario-form-subtitle {
-          color: #6c8f76;
-          margin: 10px 0 28px;
-          font-weight: 500;
+        .usuario-subtitle {
+          margin: 12px 0 28px;
+          color: #5f8a68;
+          font-size: 16px;
+          font-weight: 600;
         }
 
-        .usuario-form-grid {
+        .usuario-alert {
+          margin-bottom: 20px;
+          padding: 14px 18px;
+          border-radius: 16px;
+          background: #fff0f0;
+          border: 1px solid #ffc7c7;
+          color: #c62828;
+          font-size: 14px;
+          font-weight: 900;
+          text-align: center;
+        }
+
+        .usuario-loading {
+          color: #5f8a68;
+          font-weight: 800;
+          padding: 20px 0;
+        }
+
+        .usuario-grid {
           display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 18px;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 20px;
         }
 
         .usuario-field-full {
@@ -179,26 +222,28 @@ export default function EditUsuario() {
 
         .usuario-label {
           display: block;
-          margin-bottom: 8px;
-          color: #365940;
+          margin-bottom: 9px;
+          color: #234b2c;
           font-size: 12px;
-          font-weight: 800;
-          letter-spacing: 2px;
+          font-weight: 900;
+          letter-spacing: 3px;
           text-transform: uppercase;
         }
 
         .usuario-input,
         .usuario-select {
           width: 100%;
-          height: 54px;
+          height: 58px;
           border: 1.5px solid #d4e8d9;
-          border-radius: 15px;
+          border-radius: 18px;
           background: #f1f8f4;
-          padding: 0 16px;
           color: #102319;
-          font-size: 15px;
-          font-weight: 600;
+          font-size: 16px;
+          font-weight: 650;
           outline: none;
+          font-family: "Segoe UI", Arial, sans-serif;
+          padding: 0 18px;
+          transition: 0.18s ease;
         }
 
         .usuario-input:focus,
@@ -208,90 +253,103 @@ export default function EditUsuario() {
           box-shadow: 0 0 0 4px rgba(0, 156, 41, 0.12);
         }
 
-        .usuario-alert {
-          margin-bottom: 18px;
-          padding: 13px 16px;
-          border-radius: 14px;
-          background: #fff0f0;
-          border: 1px solid #ffc7c7;
-          color: #c62828;
-          font-weight: 700;
-          text-align: center;
-        }
-
         .usuario-check {
           display: flex;
           align-items: center;
           gap: 10px;
-          color: #365940;
-          font-weight: 700;
-        }
-
-        .usuario-form-actions {
-          display: flex;
-          gap: 12px;
-          margin-top: 28px;
-        }
-
-        .usuario-submit,
-        .usuario-cancel {
-          height: 54px;
-          border-radius: 15px;
-          padding: 0 24px;
+          margin-top: 20px;
+          color: #234b2c;
           font-size: 15px;
-          font-weight: 800;
-          cursor: pointer;
+          font-weight: 900;
         }
 
-        .usuario-submit {
+        .usuario-check input {
+          width: 17px;
+          height: 17px;
+          accent-color: #009c29;
+        }
+
+        .usuario-actions {
+          display: flex;
+          gap: 14px;
+          margin-top: 30px;
+        }
+
+        .usuario-save,
+        .usuario-cancel {
+          height: 56px;
+          border-radius: 16px;
+          padding: 0 28px;
+          font-size: 15px;
+          font-weight: 900;
+          cursor: pointer;
+          transition: 0.18s ease;
+        }
+
+        .usuario-save {
           border: none;
           background: #009c29;
           color: #ffffff;
           box-shadow: 0 14px 28px rgba(0, 156, 41, 0.22);
         }
 
+        .usuario-save:hover {
+          background: #008425;
+        }
+
+        .usuario-save:disabled {
+          opacity: 0.65;
+          cursor: not-allowed;
+        }
+
         .usuario-cancel {
-          border: 1px solid #bfe8ca;
+          border: 1.5px solid #bfe8ca;
           background: #ffffff;
           color: #009c29;
         }
 
-        .usuario-loading {
-          max-width: 760px;
-          margin: 0 auto;
-          background: #ffffff;
-          border: 1px solid #dcefe4;
-          border-radius: 24px;
-          padding: 34px;
-          color: #6c8f76;
-          font-weight: 700;
+        .usuario-cancel:hover {
+          background: #effaf2;
         }
 
-        @media (max-width: 760px) {
-          .usuario-form-grid {
+        @media (max-width: 720px) {
+          .usuario-form-page {
+            padding: 28px 18px 100px;
+          }
+
+          .usuario-form-card {
+            padding: 24px;
+          }
+
+          .usuario-grid {
             grid-template-columns: 1fr;
           }
 
-          .usuario-form-actions {
+          .usuario-actions {
             flex-direction: column;
+          }
+
+          .usuario-save,
+          .usuario-cancel {
+            width: 100%;
           }
         }
       `}</style>
 
       <section className="usuario-form-page">
-        {loading ? (
-          <div className="usuario-loading">Cargando usuario...</div>
-        ) : (
-          <div className="usuario-form-card">
-            <h1 className="usuario-form-title">Editar usuario</h1>
-            <p className="usuario-form-subtitle">
-              Actualiza los datos del usuario seleccionado.
-            </p>
+        <div className="usuario-form-card">
+          <h1 className="usuario-title">Editar usuario</h1>
+          <p className="usuario-subtitle">
+            Actualiza los datos del usuario seleccionado.
+          </p>
 
-            {error && <div className="usuario-alert">{error}</div>}
+          {error && <div className="usuario-alert">{error}</div>}
 
+          {loading ? (
+            <div className="usuario-loading">Cargando usuario...</div>
+          ) : (
             <form onSubmit={handleSubmit}>
-              <div className="usuario-form-grid">
+              <div className="usuario-grid">
                 <div className="usuario-field-full">
                   <label className="usuario-label">Nombre completo</label>
                   <input
@@ -307,7 +365,6 @@ export default function EditUsuario() {
                   <input
                     className="usuario-input"
                     name="correo"
-                    type="email"
                     value={form.correo}
                     onChange={handleChange}
                   />
@@ -331,8 +388,8 @@ export default function EditUsuario() {
                     value={form.rol}
                     onChange={handleChange}
                   >
-                    <option value="cliente">Cliente</option>
-                    <option value="admin">Administrador</option>
+                    <option value="Cliente">Cliente</option>
+                    <option value="Administrador">Administrador</option>
                   </select>
                 </div>
 
@@ -357,20 +414,20 @@ export default function EditUsuario() {
                     onChange={handleChange}
                   />
                 </div>
-
-                <label className="usuario-check">
-                  <input
-                    type="checkbox"
-                    name="estado"
-                    checked={form.estado}
-                    onChange={handleChange}
-                  />
-                  Usuario activo
-                </label>
               </div>
 
-              <div className="usuario-form-actions">
-                <button type="submit" className="usuario-submit" disabled={saving}>
+              <label className="usuario-check">
+                <input
+                  type="checkbox"
+                  name="estado"
+                  checked={form.estado}
+                  onChange={handleChange}
+                />
+                Usuario activo
+              </label>
+
+              <div className="usuario-actions">
+                <button type="submit" className="usuario-save" disabled={saving}>
                   {saving ? "Actualizando..." : "Actualizar usuario"}
                 </button>
 
@@ -383,8 +440,8 @@ export default function EditUsuario() {
                 </button>
               </div>
             </form>
-          </div>
-        )}
+          )}
+        </div>
       </section>
     </>
   );
